@@ -756,7 +756,7 @@ yaffs_load_config_file(TSK_IMG_INFO * a_img_info, std::map<std::string, std::str
     config_file_name_len += TSTRLEN(YAFFS_CONFIG_FILE_SUFFIX);
     config_file_name = (TSK_TCHAR *) tsk_malloc(sizeof(TSK_TCHAR) * (config_file_name_len + 1));
 
-    TSTRNCPY(config_file_name, a_img_info->images[0], TSTRLEN(a_img_info->images[0]) + 1);
+    TSTRNCPY(config_file_name, a_img_info->images[0], config_file_name_len + 1);
     TSTRNCAT(config_file_name, YAFFS_CONFIG_FILE_SUFFIX, TSTRLEN(YAFFS_CONFIG_FILE_SUFFIX) + 1);
 
 #ifdef TSK_WIN32
@@ -1689,8 +1689,7 @@ static uint8_t
         fs_file->meta->attr = tsk_fs_attrlist_alloc();
     }
 
-    strncpy(fs_file->meta->name2->name, name,
-        TSK_FS_META_NAME_LIST_NSIZE);
+    strncpy(fs_file->meta->name2->name, name, TSK_FS_META_NAME_LIST_NSIZE - 1);
 
     fs_file->meta->size = 0;
     fs_file->meta->attr_state = TSK_FS_META_ATTR_EMPTY;
@@ -1738,8 +1737,7 @@ static uint8_t
     }
 
     fs_file->meta->addr = inode;
-    strncpy(fs_file->meta->name2->name, name,
-        TSK_FS_META_NAME_LIST_NSIZE);
+    strncpy(fs_file->meta->name2->name, name, TSK_FS_META_NAME_LIST_NSIZE - 1);
 
     fs_file->meta->size = 0;
     fs_file->meta->attr_state = TSK_FS_META_ATTR_EMPTY;
@@ -2685,8 +2683,11 @@ static TSK_RETVAL_ENUM
 }
 
 static TSK_RETVAL_ENUM
-    yaffsfs_dir_open_meta(TSK_FS_INFO *a_fs, TSK_FS_DIR ** a_fs_dir,
-    TSK_INUM_T a_addr, int recursion_depth)
+yaffsfs_dir_open_meta(
+  TSK_FS_INFO *a_fs,
+  TSK_FS_DIR ** a_fs_dir,
+  TSK_INUM_T a_addr,
+  [[maybe_unused]] int recursion_depth)
 {
     TSK_FS_DIR *fs_dir;
     TSK_FS_NAME *fs_name;
@@ -3011,8 +3012,12 @@ static uint8_t
 * @returns NULL on error or if data is not an Yaffs/3 file system
 */
 TSK_FS_INFO *
-    yaffs2_open(TSK_IMG_INFO * img_info, TSK_OFF_T offset,
-    TSK_FS_TYPE_ENUM ftype, const char* a_pass, uint8_t test)
+yaffs2_open(
+  TSK_IMG_INFO * img_info,
+  TSK_OFF_T offset,
+  TSK_FS_TYPE_ENUM ftype,
+  [[maybe_unused]] const char* a_pass,
+  uint8_t test)
 {
     YAFFSFS_INFO *yaffsfs = NULL;
     TSK_FS_INFO *fs = NULL;

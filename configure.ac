@@ -15,7 +15,7 @@ AM_MAINTAINER_MODE
 
 dnl Checks for programs.
 AC_PROG_CXX
-AX_CXX_COMPILE_STDCXX([14], [noext], [mandatory])
+AX_CXX_COMPILE_STDCXX([17], [noext], [mandatory])
 AC_PROG_CC
 AC_PROG_CPP
 AC_PROG_INSTALL
@@ -24,9 +24,6 @@ AC_PROG_MAKE_SET
 AC_PATH_PROG(PERL, perl)
 
 TSK_CHECK_PROG_PKGCONFIG
-
-
-
 
 dnl Checks for header files.
 dnl AC_HEADER_MAJOR
@@ -69,11 +66,9 @@ AC_CHECK_FUNCS([ishexnumber err errx warn warnx vasprintf getrusage])
 AC_CHECK_FUNCS([strlcpy strlcat strnlen])
 
 AX_PTHREAD([
-    AC_DEFINE(HAVE_PTHREAD,1,[Define if you have POSIX threads libraries and header files.])
-    LIBS="$PTHREAD_LIBS $LIBS"
-    CPPFLAGS="$CPPFLAGS $PTHREAD_CFLAGS"
-    LDFLAGS="$LDFLAGS $PTHREAD_CFLAGS"
-    CC="$PTHREAD_CC"],[])
+    AC_DEFINE(HAVE_PTHREAD, 1, [Define if you have POSIX threads libraries and header files.])
+    CC="$PTHREAD_CC"
+    CXX="$PTHREAD_CXX"], [])
 
 dnl Permit single-threaded builds
 AC_ARG_ENABLE([multithreading],
@@ -82,14 +77,17 @@ AC_ARG_ENABLE([multithreading],
 dnl Enable multithreading by default in the presence of pthread
 AS_IF([test "x$ax_pthread_ok" = "xyes" && test "x$enable_multithreading" != "xno"], [ax_multithread=yes], [ax_multithread=no])
 
-dnl Add enable/disable option
+dnl Add an option to build the Java (JNI) bindings
 AC_ARG_ENABLE([java],
-    [AS_HELP_STRING([--disable-java], [Do not build the java bindings or jar file])])
+    [AS_HELP_STRING([--enable-java], [Build the Java (JNI) bindings @<:@default=no@:>@])],
+    [enable_java=$enableval], [enable_java=no])
 
 dnl Checks for libraries.
 
 dnl Some platforms will complain about missing included functions if libstdc++ is not included.
-AC_CHECK_LIB(stdc++, main, , AC_MSG_ERROR([missing libstdc++]))
+AC_CHECK_LIB(stdc++, main, [], AC_MSG_ERROR([missing libstdc++]))
+AC_SUBST([STDCPP_LIBS], ['-lstdc++'])
+
 AC_CHECK_HEADERS(list, , , AC_MSG_ERROR([missing STL list class header]))
 AC_CHECK_HEADERS(map, , , AC_MSG_ERROR([missing STL map class header]))
 AC_CHECK_HEADERS(queue, , , AC_MSG_ERROR([missing STL queue class header]))
@@ -105,9 +103,7 @@ AS_IF([test "x$ac_cv_prog_PKGCONFIG" = "xyes"],
     SAVED_AX_PACKAGE_REQUIRES_PRIVATE="$AX_PACKAGE_REQUIRES_PRIVATE"
     TSK_PKG_CHECK_MODULES([SQLITE3], [], [sqlite3],
     [
-      CFLAGS="$CFLAGS $SQLITE3_CFLAGS"
-      CXXFLAGS="$CXXFLAGS $SQLITE3_CFLAGS"
-      LIBS="$LIBS $SQLITE3_LIBS"
+      SQLITE3_CXXFLAGS="$SQLITE3_CFLAGS"
     ],
     [
       AX_PACKAGE_REQUIRES_PRIVATE="$SAVED_AX_PACKAGE_REQUIRES_PRIVATE"
@@ -121,8 +117,10 @@ AS_IF([test "x$ax_sqlite3" != "xyes"],
   [
     AC_CHECK_HEADERS(
       [sqlite3.h],
-      [AC_CHECK_LIB([dl], [dlopen])
-       AC_CHECK_LIB([sqlite3], [sqlite3_open], [ax_sqlite3=yes], [])]
+      [
+        AC_CHECK_LIB([dl], [dlopen], [ax_dl=yes], [])
+        AC_CHECK_LIB([sqlite3], [sqlite3_open], [ax_sqlite3=yes], [])
+      ]
     )
   ]
 )
@@ -130,17 +128,29 @@ AS_IF([test "x$ax_sqlite3" != "xyes"],
 dnl Compile the bundled sqlite if there is no system one installed
 AC_MSG_CHECKING(which sqlite3 to use)
 AS_IF([test "x$ax_sqlite3" = "xyes"],
-      [AC_MSG_RESULT([system])
-       PACKAGE_LIBS_PRIVATE="$PACKAGE_LIBS_PRIVATE -lsqlite3"],
-      [AC_MSG_RESULT([bundled])])
+      [
+        AC_MSG_RESULT([system])
+        PACKAGE_LIBS_PRIVATE="$PACKAGE_LIBS_PRIVATE -lsqlite3"
+        SQLITE3_LIBS='-lsqlite3'
+        AS_IF([test "x$ax_dl" = "xyes"], [SQLITE3_LIBS="$SQLITE3_LIBS -ldl"])
+      ],
+      [AC_MSG_RESULT([bundled])
+       SQLITE3_CPPFLAGS="-DSQLITE_OMIT_LOAD_EXTENSION"]
+)
 AM_CONDITIONAL([HAVE_LIBSQLITE3], [test "x$ax_sqlite3" = "xyes"])
 
+AC_SUBST([SQLITE3_CPPFLAGS])
+AC_SUBST([SQLITE3_CXXFLAGS])
+AC_SUBST([SQLITE3_LIBS])
+
 dnl Check if we should link with OpenSSL
-TSK_OPT_DEP_CHECK([libcrypto], [LIBOPENSSL], [libcrypto], [openssl/sha.h], [crypto], [SHA1])
+TSK_OPT_DEP_CHECK([libcrypto], [CRYPTO], [libcrypto], [openssl/sha.h], [crypto], [SHA1])
 dnl Check if we should link with afflib
-TSK_OPT_DEP_CHECK([afflib], [], [], [afflib/afflib.h], [afflib], [af_open])
+dnl note that afflib/utils.h explicitly checks for openssl/pem.h, so we need to test for it also
+TSK_OPT_DEP_CHECK([afflib], [AFFLIB], [], [afflib/afflib.h], [afflib], [af_open])
+AC_CHECK_HEADERS([openssl/pem.h])
 dnl Check if we should link with libaff4
-TSK_OPT_DEP_CHECK([libaff4], [], [], [aff4/libaff4-c.h], [aff4], [AFF4_version])
+TSK_OPT_DEP_CHECK([libaff4], [AFF4], [], [aff4/libaff4-c.h], [aff4], [AFF4_version])
 dnl Check if we should link with zlib
 TSK_OPT_DEP_CHECK([zlib], [ZLIB], [zlib], [zlib.h], [z], [inflate])
 dnl Check if we should link with libbfio
@@ -172,7 +182,7 @@ AS_IF(
 )
 
 dnl Check if we should link with libvslvm
-TSK_OPT_DEP_CHECK([libvslvm], [LVM], [libvslvm], [libvslvm.h], [vslvm], [libvslvm_get_version])
+TSK_OPT_DEP_CHECK([libvslvm], [VSLVM], [libvslvm], [libvslvm.h], [vslvm], [libvslvm_get_version])
 
 dnl check for user online input
 AC_ARG_ENABLE([offline],
@@ -193,26 +203,28 @@ AM_COND_IF([CUSTOM_DEFAULT_JAR_LOCATION],
     [AC_SUBST([DEFAULT_JAR_LOCATION], [$default_jar_location])]
 )
 
-dnl Test for the various java things that we need for bindings
+dnl Test for the various Java things that we need for bindings
 AS_IF([test "x$enable_java" != "xno"], [
     dnl javac is needed to compile the JAR file
     AX_PROG_JAVAC
-    if test "x$JAVAC" != x; then
-        AX_JNI_INCLUDE_DIR
+    AS_IF(
+        [test "x$JAVAC" = x],
+        [enable_java=no],
+        [AX_JNI_INCLUDE_DIR
         for JNI_INCLUDE_DIR in $JNI_INCLUDE_DIRS
         do
             JNI_CPPFLAGS="$JNI_CPPFLAGS -I$JNI_INCLUDE_DIR"
         done
-        dnl Export the paths so that the makefile gets them
+        dnl Export the paths so that the Makefile gets them
         AC_SUBST(JNI_CPPFLAGS, $JNI_CPPFLAGS)
-    fi
 
-    dnl java is needed by ant
-    dnl we had one report of a system with javac and not java
-    AX_PROG_JAVA
+        dnl java is needed by ant
+        dnl we had one report of a system with javac and not java
+        AX_PROG_JAVA
 
-    dnl Test is ant is available
-    AC_PATH_PROG([ANT_FOUND], [ant], [])
+        dnl Test is ant is available
+        AC_PATH_PROG([ANT_FOUND], [ant], [])
+	])
 
 ]) dnl test enable_java
 
@@ -264,11 +276,26 @@ case "$host" in
   LIBTSK_LDFLAGS="-no-undefined"
   AC_SUBST([LIBTSK_LDFLAGS])
   ;;
-  *)
+*)
   dnl No additional flags needed.
   AC_MSG_RESULT([no])
   ;;
 esac
+
+dnl Run test executables in Wine if cross-compiling with mingw
+case "$host" in
+*-*-mingw*)
+  case "$build" in
+  *-*-cygwin*|*-*-mingw*)
+    ;;
+  *)
+    use_wine=yes
+    ;;
+  esac
+  ;;
+esac
+
+AM_CONDITIONAL([USE_WINE], [test "x$use_wine" = "xyes"])
 
 dnl ensure static linkage of tools during static builds
 if test "x$enable_shared" != "xyes"; then
@@ -283,43 +310,24 @@ AC_SUBST([CXXLD])
 dnl Dependencies for fiwalk
 AC_CHECK_FUNCS([getline])
 
-dnl Use -Wno-unused-command-line-argument only if the compiler understands it
-AX_APPEND_COMPILE_FLAGS([-Wno-unused-command-line-argument], [CFLAGS], [-Werror-unknown-warning])
-AX_APPEND_COMPILE_FLAGS([-Wno-unused-command-line-argument], [CXXFLAGS], [-Werror-unknown-warning])
-
 TSK_ADDRESS_SANITIZER
 TSK_THREAD_SANITIZER
 TSK_UNDEFINED_SANITIZER
 
-check_imgs=
-
-dnl FIXME: check iso on MinGW after fixing timestamp bug
-case "$host" in
-*-*-mingw*)
-  ;;
-*)
-  check_imgs="$check_imgs image.iso"
-  ;;
-esac
-
-AS_IF([test "x$ax_afflib" != "xno"], [check_imgs="$check_imgs"])
-AS_IF([test "x$ax_libewf" != "xno"], [check_imgs="$check_imgs image.E01"])
-AS_IF([test "x$ax_libqcow" != "xno"], [check_imgs="$check_imgs image.qcow"])
-AS_IF([test "x$ax_libvhdi" != "xno"], [check_imgs="$check_imgs image.vhd"])
-AS_IF([test "x$ax_libvmdk" != "xno"], [check_imgs="$check_imgs image.vmdk"])
-
-
-AC_SUBST(CHECK_IMGS, $check_imgs)
+dnl Defines for supported image types
+AM_CONDITIONAL([HAVE_AFF], [test "x$ax_afflib" != "xno"])
+AM_CONDITIONAL([HAVE_E01], [test "x$ax_libewf" != "xno"])
+AM_CONDITIONAL([HAVE_QCOW], [test "x$ax_libqcow" != "xno"])
+AM_CONDITIONAL([HAVE_VHD], [test "x$ax_libvhdi" != "xno"])
+AM_CONDITIONAL([HAVE_VMDK], [test "x$ax_libvmdk" != "xno"])
 
 AC_CONFIG_FILES([
     Makefile
-    tsk/tsk.pc
-    tests/imgs_to_dump])
+    tsk/tsk.pc])
 
 AC_OUTPUT
 
 dnl Print a summary
-dnl openssl is disabled, so removed line openssl support: $ax_openssl
 AC_MSG_NOTICE([
 Building:
    afflib support:                        $ax_afflib
@@ -335,7 +343,6 @@ Building:
    zlib support:                          $ax_zlib
 
 Features:
-   Catch2 support:                        $with_catch2
    Java/JNI support:                      $ax_java_support
    Multithreading:                        $ax_multithread
 ])

@@ -83,7 +83,7 @@ TSK_HDB_BINSRCH_INFO *hdb_binsrch_open(FILE *hDb, const TSK_TCHAR *db_path)
 * @param htype Hash type being used
 * @return 1 on error and 0 on success
 */
-static uint8_t
+uint8_t
     hdb_binsrch_idx_init_hash_type_info(TSK_HDB_BINSRCH_INFO *hdb_binsrch_info, TSK_HDB_HTYPE_ENUM htype)
 {
     if (hdb_binsrch_info->hash_type != TSK_HDB_HTYPE_INVALID_ID) {
@@ -198,7 +198,7 @@ static uint8_t
 #ifdef TSK_WIN32
     {
         HANDLE hWin;
-        if (-1 == GetFileAttributes(hdb_binsrch_info->idx_idx_fname)) {
+        if (GetFileAttributes(hdb_binsrch_info->idx_idx_fname) == INVALID_FILE_ATTRIBUTES) {
             // The file does not exist. Not a problem.
             return 0;
         }
@@ -323,7 +323,7 @@ static uint8_t
         HANDLE hWin;
         DWORD szLow, szHi;
 
-        if (-1 == GetFileAttributes(hdb_binsrch_info->idx_fname)) {
+        if (GetFileAttributes(hdb_binsrch_info->idx_fname) == INVALID_FILE_ATTRIBUTES) {
             tsk_release_lock(&hdb_binsrch_info->base.lock);
             tsk_error_reset();
             tsk_error_set_errno(TSK_ERR_HDB_MISSING);
@@ -970,13 +970,13 @@ uint8_t
 #ifdef TSK_WIN32
     wchar_t buf[TSK_HDB_MAXLEN];
     /// @@ Expand this to be SYSTEM_ROOT -- GetWindowsDirectory()
-    wchar_t *sys32 = _TSK_T("C:\\WINDOWS\\System32\\sort.exe");
+    const wchar_t *sys32 = _TSK_T("C:\\WINDOWS\\System32\\sort.exe");
     DWORD stat;
     STARTUPINFO myStartInfo;
     PROCESS_INFORMATION pinfo;
 
     stat = GetFileAttributes(sys32);
-    if ((stat != -1) && ((stat & FILE_ATTRIBUTE_DIRECTORY) == 0)) {
+    if (stat != INVALID_FILE_ATTRIBUTES && (stat & FILE_ATTRIBUTE_DIRECTORY) == 0) {
         TSNPRINTF(buf, TSK_HDB_MAXLEN, _TSK_T("%s /o \"%s\" \"%s\""),
             sys32, hdb_binsrch_info->idx_fname, hdb_binsrch_info->uns_fname);
     }
@@ -1017,7 +1017,7 @@ uint8_t
 
     // verify it was created
     stat = GetFileAttributes(hdb_binsrch_info->idx_fname);
-    if (stat == -1) {
+    if (stat == INVALID_FILE_ATTRIBUTES) {
         tsk_error_reset();
         tsk_error_set_errno(TSK_ERR_HDB_PROC);
         tsk_error_set_errstr("hdb_binsrch_finalize: sorted file not created");
@@ -1142,16 +1142,14 @@ int8_t
         tsk_error_reset();
         tsk_error_set_errno(TSK_ERR_HDB_ARG);
         tsk_error_set_errstr(
-            "%s: Hash passed is different size than expected (%d vs %zd)",
+            "%s: Hash passed is different size than expected (%d vs %" PRIuSIZE ")",
             func_name, hdb_binsrch_info->hash_len, strlen(hash));
         return -1;
     }
     else if (hdb_binsrch_info->idx_llen == 0) {
         tsk_error_reset();
         tsk_error_set_errno(TSK_ERR_HDB_CORRUPT);
-        tsk_error_set_errstr(
-            "%s: Error: Index line length is zero",
-            func_name, hdb_binsrch_info->hash_len, strlen(hash));
+        tsk_error_set_errstr("%s: Error: Index line length is zero", func_name);
         return -1;
     }
 
@@ -1585,6 +1583,9 @@ void
 
     free(hdb_info->idx_fname);
     hdb_info->idx_fname = NULL;
+
+    free(hdb_info->idx_idx_fname);
+    hdb_info->idx_idx_fname = NULL;
 
     if (hdb_info->hIdx) {
         fclose(hdb_info->hIdx);

@@ -759,8 +759,11 @@ ntfs_fix_idxrec(NTFS_INFO * ntfs, ntfs_idxrec * idxrec, uint32_t len)
 * @returns error, corruption, ok etc.
 */
 TSK_RETVAL_ENUM
-ntfs_dir_open_meta(TSK_FS_INFO * a_fs, TSK_FS_DIR ** a_fs_dir,
-    TSK_INUM_T a_addr, int recursion_depth)
+ntfs_dir_open_meta(
+  TSK_FS_INFO * a_fs,
+  TSK_FS_DIR ** a_fs_dir,
+  TSK_INUM_T a_addr,
+  [[maybe_unused]] int recursion_depth)
 {
     NTFS_INFO *ntfs = (NTFS_INFO *) a_fs;
     TSK_FS_DIR *fs_dir;
@@ -771,7 +774,7 @@ ntfs_dir_open_meta(TSK_FS_INFO * a_fs, TSK_FS_DIR ** a_fs_dir,
     ntfs_idxroot *idxroot;
     ntfs_idxelist *idxelist;
     ntfs_idxrec *idxrec_p, *idxrec;
-    TSK_OFF_T idxalloc_len;
+    size_t idxalloc_len;
     TSK_FS_LOAD_FILE load_file;
 
     /* In this function, we will return immediately if we get an error.
@@ -1036,15 +1039,16 @@ ntfs_dir_open_meta(TSK_FS_INFO * a_fs, TSK_FS_DIR ** a_fs_dir,
         /*
          * Copy the index allocation run into a big buffer
          */
-        idxalloc_len = fs_attr_idx->nrd.allocsize;
         // default to null unless length is greater than 0
         idxalloc = NULL;
-        if ((idxalloc_len > 0) && ((idxalloc = (char *)tsk_malloc((size_t)idxalloc_len)) == NULL)) {
-            return TSK_ERR;
+        idxalloc_len = (size_t) fs_attr_idx->nrd.allocsize;
+
+        if (idxalloc_len > 0 && (idxalloc = (char *)tsk_malloc(idxalloc_len)) == NULL) {
+          return TSK_ERR;
         }
 
         /* Fill in the loading data structure */
-        load_file.total = load_file.left = (size_t) idxalloc_len;
+        load_file.total = load_file.left = idxalloc_len;
         load_file.cur = load_file.base = idxalloc;
 
         if (tsk_verbose)
@@ -1091,7 +1095,7 @@ ntfs_dir_open_meta(TSK_FS_INFO * a_fs, TSK_FS_DIR ** a_fs_dir,
             uint32_t list_len, rec_len;
 
             // Ensure that there is enough data for an idxrec
-            if ((idxalloc_len < sizeof(ntfs_idxrec)) || (off > idxalloc_len - sizeof(ntfs_idxrec))) {
+            if (idxalloc_len < sizeof(ntfs_idxrec) || off > idxalloc_len - sizeof(ntfs_idxrec)) {
                 tsk_error_reset();
                 tsk_error_set_errno(TSK_ERR_FS_INODE_COR);
                 tsk_error_set_errstr

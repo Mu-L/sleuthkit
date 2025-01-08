@@ -1,10 +1,11 @@
 ACLOCAL_AMFLAGS = -I m4
 
-AM_CPPFLAGS = -I$(srcdir)/tsk
-AM_CFLAGS = -Wall -Wextra -Wno-unused-parameter
-AM_CXXFLAGS = -Wall -Wextra -Wno-unused-parameter -Wno-overloaded-virtual
+AM_CPPFLAGS = -I$(srcdir)/tsk $(SQLITE3_CPPFLAGS) $(CRYPTO_CPPFLAGS) $(AFFLIB_CPPFLAGS) $(AFF4_CPPFLAGS) $(EWF_CPPFLAGS) $(QCOW_CPPFLAGS) $(VHDI_CPPFLAGS) $(VMDK_CPPFLAGS) $(VSLVM_CPPFLAGS) $(BFIO_CPPFLAGS) $(ZLIB_CPPFLAGS)
+AM_CFLAGS = -Wall -Wextra $(PTHREAD_CFLAGS) $(SQLITE3_CFLAGS) $(CRYPTO_CFLAGS) $(AFFLIB_CFLAGS) $(AFF4_CFLAGS) $(EWF_CFLAGS) $(QCOW_CFLAGS) $(VHDI_CFLAGS) $(VMDK_CFLAGS) $(VSLVM_CFLAGS) $(BFIO_CFLAGS) $(ZLIB_CFLAGS)
+AM_CXXFLAGS = -Wall -Wextra -Woverloaded-virtual $(PTHREAD_CXXFLAGS) $(CRYPTO_CXXFLAGS) $(SQLITE3_CXXFLAGS) $(AFFLIB_CXXFLAGS) $(AFF4_CXXFLAGS) $(EWF_CXXFLAGS) $(QCOW_CXXFLAGS) $(VHDI_CXXFLAGS) $(VMDK_CXXFLAGS) $(VSLVM_CXXFLAGS) $(BFIO_CXXFLAGS) $(ZLIB_CXXFLAGS)
+AM_LDFLAGS = $(SQLITE3_LDFLAGS) $(AFFLIB_LDFLAGS) $(CRYPTO_LDFLAGS) $(AFF4_LDFLAGS) $(EWF_LDFLAGS) $(QCOW_LDFLAGS) $(VHDI_LDFLAGS) $(VMDK_LDFLAGS) $(VSLVM_LDFLAGS) $(BFIO_LDFLAGS) $(ZLIB_LDFLAGS)
 
-CLEANFILES =
+CLEANFILES = *.gcov
 
 # File that we want to include in the dist
 EXTRA_DIST = \
@@ -56,6 +57,7 @@ nobase_include_HEADERS = \
 	tsk/auto/tsk_is_image_supported.h \
 	tsk/base/tsk_base.h \
 	tsk/base/tsk_os.h \
+	tsk/base/tsk_os_cpp.h \
 	tsk/fs/apfs_compat.hpp \
 	tsk/fs/apfs_fs.h \
 	tsk/fs/apfs_fs.hpp \
@@ -63,6 +65,7 @@ nobase_include_HEADERS = \
 	tsk/fs/encryptionHelper.h \
 	tsk/fs/tsk_apfs.h \
 	tsk/fs/tsk_apfs.hpp \
+	tsk/fs/tsk_btrfs.h \
 	tsk/fs/tsk_exfatfs.h \
 	tsk/fs/tsk_ext2fs.h \
 	tsk/fs/tsk_fatfs.h \
@@ -124,9 +127,24 @@ nobase_dist_data_DATA = \
 # Library
 #
 
-TSK_LIB = tsk/libtsk.la
+TSK_LIBS = \
+	tsk/libtsk.la \
+	$(PTHREAD_LIBS) \
+	$(SQLITE3_LIBS) \
+	$(CRYPTO_LIBS) \
+	$(AFFLIB_LIBS) \
+	$(AFF4_LIBS) \
+	$(EWF_LIBS) \
+	$(QCOW_LIBS) \
+	$(VHDI_LIBS) \
+	$(VMDK_LIBS) \
+	$(VSLVM_LIBS) \
+	$(BFIO_LIBS) \
+	$(ZLIB_LIBS) \
+	$(STDCPP_LIBS)
 
 noinst_LTLIBRARIES = \
+	tools/libtsktools.la \
 	tsk/auto/libtskauto.la \
 	tsk/base/libtskbase.la \
 	tsk/fs/libtskfs.la \
@@ -158,7 +176,8 @@ tsk_auto_libtskauto_la_SOURCES = \
 
 # Compile the bundled sqlite3 if there isn't an existing lib to use
 if !HAVE_LIBSQLITE3
-tsk_auto_libtskauto_la_SOURCES += tsk/auto/sqlite3.c tsk/auto/sqlite3.h
+AM_CPPFLAGS += -Ivendors
+tsk_auto_libtskauto_la_SOURCES += vendors/sqlite3.c vendors/sqlite3.h
 endif
 
 tsk_base_libtskbase_la_SOURCES = \
@@ -187,112 +206,114 @@ tsk_fs_libtskfs_la_SOURCES = \
 	tsk/fs/apfs.cpp \
 	tsk/fs/apfs_fs.cpp \
 	tsk/fs/apfs_open.cpp \
-	tsk/fs/dcalc_lib.c \
-	tsk/fs/dcat_lib.c \
-	tsk/fs/decmpfs.c \
-	tsk/fs/dls_lib.c \
-	tsk/fs/dstat_lib.c \
+	tsk/fs/dcalc_lib.cpp \
+	tsk/fs/btrfs.cpp \
+	tsk/fs/btrfs_csum.cpp \
+	tsk/fs/dcat_lib.cpp \
+	tsk/fs/decmpfs.cpp \
+	tsk/fs/dls_lib.cpp \
+	tsk/fs/dstat_lib.cpp \
 	tsk/fs/encryptionHelper.cpp \
 	tsk/fs/exfatfs.c \
-	tsk/fs/exfatfs_dent.c \
-	tsk/fs/exfatfs_meta.c \
-	tsk/fs/ext2fs.c \
-	tsk/fs/ext2fs_dent.c \
-	tsk/fs/ext2fs_journal.c \
-	tsk/fs/fatfs.c \
+	tsk/fs/exfatfs_dent.cpp \
+	tsk/fs/exfatfs_meta.cpp \
+	tsk/fs/ext2fs.cpp \
+	tsk/fs/ext2fs_dent.cpp \
+	tsk/fs/ext2fs_journal.cpp \
+	tsk/fs/fatfs.cpp \
 	tsk/fs/fatfs_dent.cpp \
-	tsk/fs/fatfs_meta.c \
+	tsk/fs/fatfs_meta.cpp \
 	tsk/fs/fatfs_utils.c \
 	tsk/fs/fatxxfs.c \
 	tsk/fs/fatxxfs_dent.c \
-	tsk/fs/fatxxfs_meta.c \
+	tsk/fs/fatxxfs_meta.cpp \
 	tsk/fs/ffind_lib.c \
-	tsk/fs/ffs.c \
-	tsk/fs/ffs_dent.c \
-	tsk/fs/fls_lib.c \
-	tsk/fs/fs_attr.c \
+	tsk/fs/ffs.cpp \
+	tsk/fs/ffs_dent.cpp \
+	tsk/fs/fls_lib.cpp \
+	tsk/fs/fs_attr.cpp \
 	tsk/fs/fs_attrlist.c \
 	tsk/fs/fs_block.c \
-	tsk/fs/fs_dir.c \
-	tsk/fs/fs_file.c \
+	tsk/fs/fs_dir.cpp \
+	tsk/fs/fs_file.cpp \
 	tsk/fs/fs_inode.c \
 	tsk/fs/fs_io.c \
-	tsk/fs/fs_load.c \
-	tsk/fs/fs_name.c \
+	tsk/fs/fs_load.cpp \
+	tsk/fs/fs_name.cpp \
 	tsk/fs/fs_open.c \
 	tsk/fs/fs_parse.c \
 	tsk/fs/fs_types.c \
-	tsk/fs/hfs.c \
-	tsk/fs/hfs_dent.c \
-	tsk/fs/hfs_journal.c \
-	tsk/fs/hfs_unicompare.c \
-	tsk/fs/icat_lib.c \
-	tsk/fs/ifind_lib.c \
-	tsk/fs/ils_lib.c \
-	tsk/fs/iso9660.c \
-	tsk/fs/iso9660_dent.c \
+	tsk/fs/hfs.cpp \
+	tsk/fs/hfs_dent.cpp \
+	tsk/fs/hfs_journal.cpp \
+	tsk/fs/hfs_unicompare.cpp \
+	tsk/fs/icat_lib.cpp \
+	tsk/fs/ifind_lib.cpp \
+	tsk/fs/ils_lib.cpp \
+	tsk/fs/iso9660.cpp \
+	tsk/fs/iso9660_dent.cpp \
 	tsk/fs/logical_fs.cpp \
 	tsk/fs/lzvn.c \
 	tsk/fs/lzvn.h \
-	tsk/fs/nofs_misc.c \
-	tsk/fs/ntfs.c \
+	tsk/fs/nofs_misc.cpp \
+	tsk/fs/ntfs.cpp \
 	tsk/fs/ntfs_dent.cpp \
 	tsk/fs/rawfs.c \
 	tsk/fs/swapfs.c \
 	tsk/fs/tsk_fs_i.h \
-	tsk/fs/unix_misc.c \
-	tsk/fs/usnjls_lib.c \
-	tsk/fs/usn_journal.c \
+	tsk/fs/unix_misc.cpp \
+	tsk/fs/usnjls_lib.cpp \
+	tsk/fs/usn_journal.cpp \
 	tsk/fs/walk_cpp.cpp \
 	tsk/fs/yaffs.cpp
 
 tsk_hashdb_libtskhashdb_la_SOURCES = \
 	tsk/hashdb/binsrch_index.cpp \
-	tsk/hashdb/encase.c \
+	tsk/hashdb/encase.cpp \
 	tsk/hashdb/hashkeeper.c \
-	tsk/hashdb/hdb_base.c \
-	tsk/hashdb/idxonly.c \
-	tsk/hashdb/md5sum.c \
-	tsk/hashdb/nsrl.c \
+	tsk/hashdb/hdb_base.cpp \
+	tsk/hashdb/idxonly.cpp \
+	tsk/hashdb/md5sum.cpp \
+	tsk/hashdb/nsrl.cpp \
 	tsk/hashdb/sqlite_hdb.cpp \
-	tsk/hashdb/tsk_hashdb.c \
+	tsk/hashdb/tsk_hashdb.cpp \
 	tsk/hashdb/tsk_hashdb.h \
 	tsk/hashdb/tsk_hashdb_i.h \
 	tsk/hashdb/tsk_hash_info.h
 
 tsk_img_libtskimg_la_SOURCES = \
-	tsk/img/aff4.c \
+	tsk/img/aff4.cpp \
 	tsk/img/aff4.h \
 	tsk/img/aff.c \
 	tsk/img/aff.h \
 	tsk/img/ewf.cpp \
 	tsk/img/ewf.h \
-	tsk/img/img_io.c \
+	tsk/img/img_io.cpp \
 	tsk/img/img_open.cpp \
+	tsk/img/img_open.h \
 	tsk/img/img_types.c \
 	tsk/img/img_writer.cpp \
 	tsk/img/img_writer.h \
-	tsk/img/logical_img.c \
+	tsk/img/logical_img.cpp \
 	tsk/img/logical_img.h \
 	tsk/img/mult_files.cpp \
 	tsk/img/mult_files.h \
-	tsk/img/qcow.c \
+	tsk/img/qcow.cpp \
 	tsk/img/qcow.h \
-	tsk/img/raw.c \
+	tsk/img/raw.cpp \
 	tsk/img/raw.h \
 	tsk/img/tsk_img_i.h \
-	tsk/img/unsupported_types.c \
+	tsk/img/unsupported_types.cpp \
 	tsk/img/unsupported_types.h \
-	tsk/img/vhd.c \
+	tsk/img/vhd.cpp \
 	tsk/img/vhd.h \
-	tsk/img/vmdk.c \
+	tsk/img/vmdk.cpp \
 	tsk/img/vmdk.h
 
-tsk_pool_libtskpool_la_CXXFLAGS = $(AM_CXXFLAGS) -Werror
 tsk_pool_libtskpool_la_SOURCES = \
 	tsk/pool/apfs_pool_compat.cpp \
 	tsk/pool/apfs_pool.cpp \
-	tsk/pool/img_bfio_handle.c \
+	tsk/pool/img_bfio_handle.cpp \
 	tsk/pool/img_bfio_handle.h \
 	tsk/pool/lvm_pool_compat.cpp \
 	tsk/pool/lvm_pool.cpp \
@@ -300,14 +321,11 @@ tsk_pool_libtskpool_la_SOURCES = \
 	tsk/pool/pool_read.cpp \
 	tsk/pool/pool_types.cpp
 
-tsk_util_libtskutil_la_CPPFLAGS = $(AM_CPPFLAGS) $(OPENSSL_INCLUDES)
-tsk_util_libtskutil_la_LDFLAGS = $(AM_LDFLAGS) $(OPENSSL_LDFLAGS)
 tsk_util_libtskutil_la_SOURCES = \
 	tsk/util/crypto.cpp \
 	tsk/util/detect_encryption.c \
-	tsk/util/file_system_utils.c
+	tsk/util/file_system_utils.cpp
 
-tsk_util_Bitlocker_libtskbitlocker_la_CXXFLAGS = $(AM_CXXFLAGS) -Werror
 tsk_util_Bitlocker_libtskbitlocker_la_SOURCES = \
 	tsk/util/Bitlocker/BitlockerParser.cpp \
 	tsk/util/Bitlocker/BitlockerUtils.cpp \
@@ -345,11 +363,10 @@ tsk_libtsk_la_LIBADD = \
 	tsk/pool/libtskpool.la \
 	tsk/util/Bitlocker/libtskbitlocker.la \
 	tsk/util/libtskutil.la \
-	tsk/vs/libtskvs.la \
-	$(OPENSSL_LIBS)
+	tsk/vs/libtskvs.la
 
 # current:revision:age
-tsk_libtsk_la_LDFLAGS = -version-info 21:1:2 $(LIBTSK_LDFLAGS)
+tsk_libtsk_la_LDFLAGS = $(AM_LDFLAGS) -version-info 21:1:2 $(LIBTSK_LDFLAGS)
 
 EXTRA_DIST += \
 	tsk/tsk_tools_i.h \
@@ -400,21 +417,25 @@ bin_PROGRAMS = \
 	tools/vstools/mmstat \
 	tools/vstools/mmcat
 
-tools_autotools_tsk_comparedir_LDADD = $(TSK_LIB)
+tools_libtsktools_la_SOURCES = \
+	tools/util.cpp \
+	tools/util.h
+
+tools_autotools_tsk_comparedir_LDADD = $(TSK_LIBS)
 tools_autotools_tsk_comparedir_SOURCES = \
 	tools/autotools/tsk_comparedir.cpp \
 	tools/autotools/tsk_comparedir.h
 
-tools_autotools_tsk_gettimes_LDADD = $(TSK_LIB)
+tools_autotools_tsk_gettimes_LDADD = $(TSK_LIBS)
 tools_autotools_tsk_gettimes_SOURCES = tools/autotools/tsk_gettimes.cpp
 
-tools_autotools_tsk_imageinfo_LDADD = $(TSK_LIB)
+tools_autotools_tsk_imageinfo_LDADD = $(TSK_LIBS)
 tools_autotools_tsk_imageinfo_SOURCES = tools/autotools/tsk_imageinfo.cpp
 
-tools_autotools_tsk_loaddb_LDADD = $(TSK_LIB)
+tools_autotools_tsk_loaddb_LDADD = $(TSK_LIBS)
 tools_autotools_tsk_loaddb_SOURCES = tools/autotools/tsk_loaddb.cpp
 
-tools_autotools_tsk_recover_LDADD = $(TSK_LIB)
+tools_autotools_tsk_recover_LDADD = $(TSK_LIBS)
 tools_autotools_tsk_recover_SOURCES = tools/autotools/tsk_recover.cpp
 
 tools_fiwalk_plugins_jpeg_extract_SOURCES = tools/fiwalk/plugins/jpeg_extract.cpp
@@ -447,7 +468,7 @@ tools/fiwalk/plugins/Libextract_plugin.class: tools/fiwalk/plugins/Libextract_pl
 
 noinst_LTLIBRARIES += tools/fiwalk/src/libfiwalk.la
 
-tools_fiwalk_src_libfiwalk_la_LIBADD = $(TSK_LIB)
+tools_fiwalk_src_libfiwalk_la_LIBADD = $(TSK_LIBS)
 tools_fiwalk_src_libfiwalk_la_SOURCES = \
 	tools/fiwalk/src/arff.cpp \
 	tools/fiwalk/src/arff.h \
@@ -457,7 +478,7 @@ tools_fiwalk_src_libfiwalk_la_SOURCES = \
 	tools/fiwalk/src/content.h \
 	tools/fiwalk/src/dfxml.cpp \
 	tools/fiwalk/src/dfxml.h \
-	tools/fiwalk/src/fiwalk.cpp  \
+	tools/fiwalk/src/fiwalk.cpp \
 	tools/fiwalk/src/fiwalk.h \
 	tools/fiwalk/src/fiwalk_tsk.cpp \
 	tools/fiwalk/src/hash_t.h \
@@ -477,77 +498,77 @@ tools_fiwalk_src_fiwalk_SOURCES = tools/fiwalk/src/fiwalk_main.cpp
 
 EXTRA_DIST += tools/fstools/fscheck.cpp
 
-tools_fstools_blkcalc_LDADD = $(TSK_LIB)
+tools_fstools_blkcalc_LDADD = $(TSK_LIBS)
 tools_fstools_blkcalc_SOURCES = tools/fstools/blkcalc.cpp
 
-tools_fstools_blkcat_LDADD = $(TSK_LIB)
+tools_fstools_blkcat_LDADD = $(TSK_LIBS)
 tools_fstools_blkcat_SOURCES = tools/fstools/blkcat.cpp
 
-tools_fstools_blkls_LDADD = $(TSK_LIB)
+tools_fstools_blkls_LDADD = $(TSK_LIBS)
 tools_fstools_blkls_SOURCES = tools/fstools/blkls.cpp
 
-tools_fstools_blkstat_LDADD = $(TSK_LIB)
+tools_fstools_blkstat_LDADD = $(TSK_LIBS)
 tools_fstools_blkstat_SOURCES = tools/fstools/blkstat.cpp
 
-tools_fstools_ffind_LDADD = $(TSK_LIB)
+tools_fstools_ffind_LDADD = $(TSK_LIBS)
 tools_fstools_ffind_SOURCES = tools/fstools/ffind.cpp
 
-tools_fstools_fls_LDADD = $(TSK_LIB)
+tools_fstools_fls_LDADD = $(TSK_LIBS) tools/libtsktools.la
 tools_fstools_fls_SOURCES = tools/fstools/fls.cpp
 
-tools_fstools_fcat_LDADD = $(TSK_LIB)
+tools_fstools_fcat_LDADD = $(TSK_LIBS)
 tools_fstools_fcat_SOURCES = tools/fstools/fcat.cpp
 
-tools_fstools_fsstat_LDADD = $(TSK_LIB)
+tools_fstools_fsstat_LDADD = $(TSK_LIBS)
 tools_fstools_fsstat_SOURCES = tools/fstools/fsstat.cpp
 
-tools_fstools_icat_LDADD = $(TSK_LIB)
+tools_fstools_icat_LDADD = $(TSK_LIBS)
 tools_fstools_icat_SOURCES = tools/fstools/icat.cpp
 
-tools_fstools_ifind_LDADD = $(TSK_LIB)
+tools_fstools_ifind_LDADD = $(TSK_LIBS)
 tools_fstools_ifind_SOURCES = tools/fstools/ifind.cpp
 
-tools_fstools_ils_LDADD = $(TSK_LIB)
+tools_fstools_ils_LDADD = $(TSK_LIBS)
 tools_fstools_ils_SOURCES = tools/fstools/ils.cpp
 
-tools_fstools_istat_LDADD = $(TSK_LIB)
+tools_fstools_istat_LDADD = $(TSK_LIBS)
 tools_fstools_istat_SOURCES = tools/fstools/istat.cpp
 
-tools_fstools_jcat_LDADD = $(TSK_LIB)
+tools_fstools_jcat_LDADD = $(TSK_LIBS)
 tools_fstools_jcat_SOURCES = tools/fstools/jcat.cpp
 
-tools_fstools_jls_LDADD = $(TSK_LIB)
+tools_fstools_jls_LDADD = $(TSK_LIBS)
 tools_fstools_jls_SOURCES = tools/fstools/jls.cpp
 
-tools_fstools_usnjls_LDADD = $(TSK_LIB)
+tools_fstools_usnjls_LDADD = $(TSK_LIBS)
 tools_fstools_usnjls_SOURCES = tools/fstools/usnjls.cpp
 
 EXTRA_DIST += tools/hashtools/md5.c tools/hashtools/sha1.c
 
-tools_hashtools_hfind_LDADD = $(TSK_LIB)
+tools_hashtools_hfind_LDADD = $(TSK_LIBS)
 tools_hashtools_hfind_SOURCES = tools/hashtools/hfind.cpp
 
-tools_imgtools_img_cat_LDADD = $(TSK_LIB)
+tools_imgtools_img_cat_LDADD = $(TSK_LIBS)
 tools_imgtools_img_cat_SOURCES = tools/imgtools/img_cat.cpp
 
-tools_imgtools_img_stat_LDADD = $(TSK_LIB)
+tools_imgtools_img_stat_LDADD = $(TSK_LIBS)
 tools_imgtools_img_stat_SOURCES = tools/imgtools/img_stat.cpp
 
-tools_pooltools_pstat_LDADD = $(TSK_LIB)
+tools_pooltools_pstat_LDADD = $(TSK_LIBS)
 tools_pooltools_pstat_SOURCES = tools/pooltools/pstat.cpp
 
 tools_srchtools_srch_strings_SOURCES = tools/srchtools/srch_strings.c
 
-tools_srchtools_sigfind_LDADD = $(TSK_LIB)
+tools_srchtools_sigfind_LDADD = $(TSK_LIBS)
 tools_srchtools_sigfind_SOURCES = tools/srchtools/sigfind.cpp
 
-tools_vstools_mmls_LDADD = $(TSK_LIB)
+tools_vstools_mmls_LDADD = $(TSK_LIBS) tools/libtsktools.la
 tools_vstools_mmls_SOURCES = tools/vstools/mmls.cpp
 
-tools_vstools_mmstat_LDADD = $(TSK_LIB)
+tools_vstools_mmstat_LDADD = $(TSK_LIBS)
 tools_vstools_mmstat_SOURCES = tools/vstools/mmstat.cpp
 
-tools_vstools_mmcat_LDADD = $(TSK_LIB)
+tools_vstools_mmcat_LDADD = $(TSK_LIBS)
 tools_vstools_mmcat_SOURCES = tools/vstools/mmcat.cpp
 
 bin_SCRIPTS = tools/sorter/sorter tools/timeline/mactime
@@ -581,110 +602,105 @@ tools/sorter/sorter: tools/sorter/sorter.base Makefile
 EXTRA_DIST += tests/runtests.sh
 
 check_SCRIPTS = \
-	tests/check_static.sh \
-	tests/runtests.sh \
-	tests/test_imgs.sh \
-	tests/test_libraries.sh \
-	tests/test_static_tools.sh
+	test/check_static.sh \
+	test/test_libraries.sh \
+	test/test_static_tools.sh \
+	test/img_dump/img_differ.sh \
+	test/img_dump/test_imgs.sh \
+	test/img_dump/test_imgs_E01.sh \
+	test/legacy/runtests.sh \
+	test/tools/tool_differ.sh \
+	test/tools/fstools/test_fls.sh \
+	test/tools/vstools/test_mmls.sh \
+	test/tools/vstools/test_mmls_E01.sh
 
 TESTS =	\
-	tests/runtests.sh \
-	tests/fiwalk_test \
-	tests/test_imgs.sh \
-	tests/test_libraries.sh
+	test/runner \
+	test/test_libraries.sh \
+	test/fiwalk/fiwalk_test \
+	test/img_dump/test_imgs.sh \
+	test/legacy/runtests.sh \
+	test/tools/fstools/test_fls.sh \
+	test/tools/vstools/test_mmls.sh
+
+if HAVE_E01
+TESTS += \
+	test/img_dump/test_imgs_E01.sh \
+	test/tools/vstools/test_mmls_E01.sh
+endif
 
 if BUILD_STATIC
-TESTS += tests/test_static_tools.sh
+TESTS += test/test_static_tools.sh
 endif
 
 TEST_EXTENSIONS = .sh
 SH_LOG_COMPILER =
 
+if USE_WINE
+TESTS_ENVIRONMENT = WINE=wine
+endif
+
 LOG_COMPILER = scripts/test_runner.sh
 
-# TODO: nothing runs these (except for img_dump, fiwalk_test)!
+# TODO: nothing runs fs_attrlist_apis, fs_name_apis, fs_thread_test, read_apis
 check_PROGRAMS = \
-	tests/fiwalk_test \
-	tests/fs_attrlist_apis \
-	tests/fs_fname_apis \
-	tests/fs_thread_test \
-	tests/img_dump \
-	tests/read_apis
+	test/runner \
+	test/fiwalk/fiwalk_test \
+	test/img_dump/img_dump \
+	test/legacy/fs_attrlist_apis \
+	test/legacy/fs_fname_apis \
+	test/legacy/fs_thread_test \
+	test/legacy/read_apis
 
-tests_fiwalk_test_CPPFLAGS = $(AM_CPPFLAGS) -Ivendors $(CATCH2_CPPFLAGS)
-tests_fiwalk_test_CFLAGS = $(AM_CFLAGS) $(PTHREAD_CFLAGS)
-tests_fiwalk_test_CXXFLAGS = $(AM_CXXFLAGS) $(PTHREAD_CFLAGS)
-tests_fiwalk_test_LDFLAGS = $(AM_LDFLAGS) $(PTHREAD_LIBS)
-tests_fiwalk_test_LDADD = $(TSK_LIB)
-tests_fiwalk_test_SOURCES = \
-	tests/fiwalk_test.cpp \
+test_runner_CPPFLAGS = $(AM_CPPFLAGS) -Ivendors $(CATCH2_CPPFLAGS)
+test_runner_LDADD = $(TSK_LIBS)
+test_runner_SOURCES = \
+	test/tsk/base/test_tsk_error.cpp \
+	test/tsk/img/test_aff4.cpp \
+	test/tsk/img/test_ewf.cpp \
+	test/tsk/img/test_img_io.cpp \
+	test/tsk/img/test_img_open.cpp \
+	test/tsk/img/test_mult_files.cpp \
+	test/tsk/img/test_qcow.cpp \
+	test/tsk/img/test_raw.cpp \
+	test/tsk/img/test_vhd.cpp \
+	test/tsk/img/test_vmdk.cpp \
+	test/tsk/util/test_crypto.cpp \
+	test/tsk/hashdb/test_binsrch_index.cpp \
+	test/runner.cpp
+
+EXTRA_test_runner_DEPENDENCIES = test/get_images/test_images.txt
+
+test_fiwalk_fiwalk_test_CPPFLAGS = $(AM_CPPFLAGS) -Ivendors $(CATCH2_CPPFLAGS)
+test_fiwalk_fiwalk_test_LDADD = $(TSK_LIBS)
+test_fiwalk_fiwalk_test_SOURCES = \
+	test/fiwalk/fiwalk_test.cpp \
 	$(tools_fiwalk_src_libfiwalk_la_SOURCES)
 
-EXTRA_tests_fiwalk_test_DEPENDENCIES = tests/test_images.txt
+EXTRA_test_fiwalk_fiwalk_test_DEPENDENCIES = test/get_images/test_images.txt
 
-tests/test_images.txt:
-	tests/get_test_images.bash
+test/get_images/test_images.txt: test/get_images/test_images.yaml test/get_images/get_test_images.bash test/get_images/get_test_images.py
+	test/get_images/get_test_images.bash
 
-CLEANFILES += tests/test_images.txt
+CLEANFILES += test/get_images/test_images.txt
 
-tests_fs_fname_apis_CFLAGS = $(AM_CFLAGS) $(PTHREAD_CFLAGS)
-tests_fs_fname_apis_CXXFLAGS = $(AM_CXXFLAGS) $(PTHREAD_CFLAGS)
-tests_fs_fname_apis_LDFLAGS = $(AM_LDFLAGS) $(PTHREAD_LIBS)
-tests_fs_fname_apis_LDADD = $(TSK_LIB)
-tests_fs_fname_apis_SOURCES = tests/fs_fname_apis.cpp
+test_img_dump_img_dump_LDADD = $(TSK_LIBS)
+test_img_dump_img_dump_SOURCES = test/img_dump/img_dump.cpp
 
-tests_fs_attrlist_apis_CFLAGS = $(AM_CFLAGS) $(PTHREAD_CFLAGS)
-tests_fs_attrlist_apis_CXXFLAGS = $(AM_CXXFLAGS) $(PTHREAD_CFLAGS)
-tests_fs_attrlist_apis_LDFLAGS = $(AM_LDFLAGS) $(PTHREAD_LIBS)
-tests_fs_attrlist_apis_LDADD = $(TSK_LIB)
-tests_fs_attrlist_apis_SOURCES = tests/fs_attrlist_apis.cpp
+test_legacy_fs_fname_apis_LDADD = $(TSK_LIBS)
+test_legacy_fs_fname_apis_SOURCES = test/legacy/fs_fname_apis.cpp
 
-tests_fs_thread_test_CFLAGS = $(AM_CFLAGS) $(PTHREAD_CFLAGS)
-tests_fs_thread_test_CXXFLAGS = $(AM_CXXFLAGS) $(PTHREAD_CFLAGS)
-tests_fs_thread_test_LDFLAGS = $(AM_LDFLAGS) $(PTHREAD_LIBS)
-tests_fs_thread_test_LDADD = $(TSK_LIB)
-tests_fs_thread_test_SOURCES = \
-	tests/fs_thread_test.cpp \
-	tests/tsk_thread.cpp \
-	tests/tsk_thread.h
+test_legacy_fs_attrlist_apis_LDADD = $(TSK_LIBS)
+test_legacy_fs_attrlist_apis_SOURCES = test/legacy/fs_attrlist_apis.cpp
 
-tests_img_dump_CFLAGS = $(AM_CFLAGS) $(PTHREAD_CFLAGS)
-tests_img_dump_CXXFLAGS = $(AM_CXXFLAGS) $(PTHREAD_CFLAGS)
-tests_img_dump_LDFLAGS = $(AM_LDFLAGS) $(PTHREAD_LIBS)
-tests_img_dump_LDADD = $(TSK_LIB)
-tests_img_dump_SOURCES = tests/img_dump.cpp
+test_legacy_fs_thread_test_LDADD = $(TSK_LIBS)
+test_legacy_fs_thread_test_SOURCES = \
+	test/legacy/fs_thread_test.cpp \
+	test/legacy/tsk_thread.cpp \
+	test/legacy/tsk_thread.h
 
-tests_read_apis_CFLAGS = $(AM_CFLAGS) $(PTHREAD_CFLAGS)
-tests_read_apis_CXXFLAGS = $(AM_CXXFLAGS) $(PTHREAD_CFLAGS)
-tests_read_apis_LDFLAGS = $(AM_LDFLAGS) $(PTHREAD_LIBS)
-tests_read_apis_LDADD = $(TSK_LIB)
-tests_read_apis_SOURCES = tests/read_apis.cpp
-
-# Unit tests:
-# Instead of linking with ../tsk/libtsk.la, we recompile everything from scratch
-# and link into a single executable.
-# This makes things easier with codecov.
-
-check_PROGRAMS += unit_tests/runner
-
-TESTS += unit_tests/runner
-
-unit_tests_runner_CPPFLAGS = $(AM_CPPFLAGS) -Ivendors $(CATCH2_CPPFLAGS)
-unit_tests_runner_CFLAGS = $(AM_CFLAGS) $(PTHREAD_CFLAGS)
-unit_tests_runner_CXXFLAGS = $(AM_CXXFLAGS) $(PTHREAD_CFLAGS)
-unit_tests_runner_LDFLAGS = $(AM_LDFLAGS) $(PTHREAD_LIBS)
-unit_tests_runner_SOURCES = \
-	unit_tests/errors_test.cpp \
-	unit_tests/mult_files_test.cpp \
-	unit_tests/runner.cpp \
-	$(tsk_auto_libtskauto_la_SOURCES) \
-	$(tsk_base_libtskbase_la_SOURCES) \
-	$(tsk_fs_libtskfs_la_SOURCES) \
-	$(tsk_hashdb_libtskhashdb_la_SOURCES) \
-	$(tsk_img_libtskimg_la_SOURCES) \
-	$(tsk_pool_libtskpool_la_SOURCES) \
-	$(tsk_util_libtskutil_la_SOURCES) \
-	$(tsk_vs_libtskvs_la_SOURCES)
+test_legacy_read_apis_LDADD = $(TSK_LIBS)
+test_legacy_read_apis_SOURCES = test/legacy/read_apis.cpp
 
 #
 # Java
@@ -716,7 +732,7 @@ jar_DATA = $(tsk_jar) $(tsk_caseuco_jar)
 lib_LTLIBRARIES += bindings/java/jni/libtsk_jni.la
 
 bindings_java_jni_libtsk_jni_la_CPPFLAGS = $(AM_CPPFLAGS) $(JNI_CPPFLAGS)
-bindings_java_jni_libtsk_jni_la_LIBADD = $(TSK_LIB)
+bindings_java_jni_libtsk_jni_la_LIBADD = $(TSK_LIBS)
 bindings_java_jni_libtsk_jni_la_SOURCES = \
 	bindings/java/jni/auto_db_java.cpp \
 	bindings/java/jni/auto_db_java.h \
@@ -788,16 +804,16 @@ noinst_PROGRAMS = \
 	samples/posix_cpp_style \
 	samples/posix_style
 
-samples_callback_cpp_style_LDADD = $(TSK_LIB)
+samples_callback_cpp_style_LDADD = $(TSK_LIBS)
 samples_callback_cpp_style_SOURCES = samples/callback-cpp-style.cpp
 
-samples_callback_style_LDADD = $(TSK_LIB)
+samples_callback_style_LDADD = $(TSK_LIBS)
 samples_callback_style_SOURCES = samples/callback-style.cpp
 
-samples_posix_cpp_style_LDADD = $(TSK_LIB)
+samples_posix_cpp_style_LDADD = $(TSK_LIBS)
 samples_posix_cpp_style_SOURCES = samples/posix-cpp-style.cpp
 
-samples_posix_style_LDADD = $(TSK_LIB)
+samples_posix_style_LDADD = $(TSK_LIBS)
 samples_posix_style_SOURCES = samples/posix-style.cpp
 
 #
@@ -812,6 +828,7 @@ noinst_PROGRAMS += \
 	fls_hfs_fuzzer \
 	fls_iso9660_fuzzer \
 	fls_ntfs_fuzzer \
+	fls_btrfs_fuzzer \
 	mmls_dos_fuzzer \
 	mmls_gpt_fuzzer \
 	mmls_mac_fuzzer \
@@ -823,7 +840,19 @@ fls_apfs_fuzzer_SOURCES = \
 
 fls_apfs_fuzzer_LDADD = \
 	@LIB_FUZZING_ENGINE@ \
-	$(TSK_LIB)
+	$(TSK_LIBS)
+
+fls_btrfs_fuzzer_SOURCES = \
+	ossfuzz/fls_fuzzer.cc \
+	ossfuzz/mem_img.h
+
+fls_btrfs_fuzzer_CPPFLAGS = \
+	-DFSTYPE=TSK_FS_TYPE_BTRFS_DETECT \
+	$(AM_CPPFLAGS)
+
+fls_btrfs_fuzzer_LDADD = \
+	@LIB_FUZZING_ENGINE@ \
+	$(TSK_LIBS)
 
 fls_ext_fuzzer_SOURCES = \
 	ossfuzz/fls_fuzzer.cc \
@@ -835,7 +864,7 @@ fls_ext_fuzzer_CPPFLAGS = \
 
 fls_ext_fuzzer_LDADD = \
 	@LIB_FUZZING_ENGINE@ \
-	$(TSK_LIB)
+	$(TSK_LIBS)
 
 fls_fat_fuzzer_SOURCES = \
 	ossfuzz/fls_fuzzer.cc \
@@ -847,7 +876,7 @@ fls_fat_fuzzer_CPPFLAGS = \
 
 fls_fat_fuzzer_LDADD = \
 	@LIB_FUZZING_ENGINE@ \
-	$(TSK_LIB)
+	$(TSK_LIBS)
 
 fls_hfs_fuzzer_SOURCES = \
 	ossfuzz/fls_fuzzer.cc \
@@ -859,7 +888,7 @@ fls_hfs_fuzzer_CPPFLAGS = \
 
 fls_hfs_fuzzer_LDADD = \
 	@LIB_FUZZING_ENGINE@ \
-	$(TSK_LIB)
+	$(TSK_LIBS)
 
 fls_iso9660_fuzzer_SOURCES = \
 	ossfuzz/fls_fuzzer.cc \
@@ -871,7 +900,7 @@ fls_iso9660_fuzzer_CPPFLAGS = \
 
 fls_iso9660_fuzzer_LDADD = \
 	@LIB_FUZZING_ENGINE@ \
-	$(TSK_LIB)
+	$(TSK_LIBS)
 
 fls_ntfs_fuzzer_SOURCES = \
 	ossfuzz/fls_fuzzer.cc \
@@ -883,7 +912,7 @@ fls_ntfs_fuzzer_CPPFLAGS = \
 
 fls_ntfs_fuzzer_LDADD = \
 	@LIB_FUZZING_ENGINE@ \
-	$(TSK_LIB)
+	$(TSK_LIBS)
 
 mmls_dos_fuzzer_SOURCES = \
 	ossfuzz/mem_img.h \
@@ -895,7 +924,7 @@ mmls_dos_fuzzer_CPPFLAGS = \
 
 mmls_dos_fuzzer_LDADD = \
 	@LIB_FUZZING_ENGINE@ \
-	$(TSK_LIB)
+	$(TSK_LIBS)
 
 mmls_gpt_fuzzer_SOURCES = \
 	ossfuzz/mem_img.h \
@@ -907,7 +936,7 @@ mmls_gpt_fuzzer_CPPFLAGS = \
 
 mmls_gpt_fuzzer_LDADD = \
 	@LIB_FUZZING_ENGINE@ \
-	$(TSK_LIB)
+	$(TSK_LIBS)
 
 mmls_mac_fuzzer_SOURCES = \
 	ossfuzz/mem_img.h \
@@ -919,7 +948,7 @@ mmls_mac_fuzzer_CPPFLAGS = \
 
 mmls_mac_fuzzer_LDADD = \
 	@LIB_FUZZING_ENGINE@ \
-	$(TSK_LIB)
+	$(TSK_LIBS)
 
 mmls_sun_fuzzer_SOURCES = \
 	ossfuzz/mem_img.h \
@@ -931,6 +960,5 @@ mmls_sun_fuzzer_CPPFLAGS = \
 
 mmls_sun_fuzzer_LDADD = \
 	@LIB_FUZZING_ENGINE@ \
-	$(TSK_LIB)
+	$(TSK_LIBS)
 endif # HAVE_LIB_FUZZING_ENGINE
-

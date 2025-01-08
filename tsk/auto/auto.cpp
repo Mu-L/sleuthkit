@@ -911,7 +911,7 @@ bool TskAuto::getStopProcessing() const {
 
 
 TSK_RETVAL_ENUM
-TskAuto::enableImageWriter(const char * imagePath) {
+TskAuto::enableImageWriter([[maybe_unused]] const char * imagePath) {
 #ifdef TSK_WIN32
 	m_imageWriterEnabled = false;
 
@@ -974,7 +974,7 @@ uint8_t TskAuto::registerError() {
 }
 
 
-const std::vector<TskAuto::error_record> TskAuto::getErrorList() {
+const std::vector<TskAuto::error_record>& TskAuto::getErrorList() {
     return m_errors;
 }
 
@@ -982,7 +982,7 @@ void TskAuto::resetErrorList() {
     m_errors.clear();
 }
 
-std::string TskAuto::errorRecordToString(error_record &rec) {
+std::string TskAuto::errorRecordToString(const error_record& rec) {
     tsk_error_reset();
     tsk_error_set_errno(rec.code);
     tsk_error_set_errstr("%s", rec.msg1.c_str());

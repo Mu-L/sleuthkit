@@ -1309,8 +1309,11 @@ TskDbSqlite::addFile(TSK_FS_FILE* fs_file,
         // copy the hash as hexidecimal into the buffer
         for (int i = 0; i < 16; i++)
         {
-            sprintf(&(md5Text[i * 2]), "%x%x", (md5[i] >> 4) & 0xf,
-                md5[i] & 0xf);
+            char buf[3];
+            snprintf(buf,sizeof(buf),"%x%x", (md5[i] >> 4) & 0xf, md5[i] & 0xf);
+            md5Text[i*2] = buf[0];
+            md5Text[i*2+1] = buf[1];
+            md5Text[i*2+2] = '\000';
         }
         md5TextPtr = md5Text;
     }
@@ -1395,9 +1398,9 @@ TskDbSqlite::addFile(TSK_FS_FILE* fs_file,
 		&& (!(fs_file->meta->flags & TSK_FS_META_FLAG_COMP))
 		&& (fs_attr->flags & TSK_FS_ATTR_NONRES)
            && (fs_attr->nrd.allocsize >  fs_attr->nrd.initsize)){
-		strncat(name, "-slack", 6);
+		strcat(name, "-slack");
 		if (strlen(extension) > 0) {
-			strncat(extension, "-slack", 6);
+			strcat(extension, "-slack");
 		}
 		TSK_OFF_T slackSize = fs_attr->nrd.allocsize - fs_attr->nrd.initsize;
 

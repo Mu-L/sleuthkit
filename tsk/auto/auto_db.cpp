@@ -154,6 +154,13 @@ uint8_t
     return 0;
 }
 
+uint8_t
+    TskAutoDb::openImageUtf8(int a_num, const char *const a_images[],
+    TSK_IMG_TYPE_ENUM a_type, unsigned int a_ssize)
+{
+    return openImageUtf8(a_num, a_images, a_type, a_ssize, nullptr);
+}
+
 /**
  * Adds an image to the database.
  *
@@ -182,6 +189,13 @@ uint8_t
 #else
     return openImageUtf8(a_num, a_images, a_type, a_ssize, a_deviceId);
 #endif
+}
+
+uint8_t
+    TskAutoDb::openImage(int a_num, const TSK_TCHAR * const a_images[],
+    TSK_IMG_TYPE_ENUM a_type, unsigned int a_ssize)
+{
+    return openImage(a_num, a_images, a_type, a_ssize, nullptr);
 }
 
 /**
@@ -1060,7 +1074,7 @@ TskAutoDb::md5HashAttr(unsigned char md5Hash[16], const TSK_FS_ATTR * fs_attr)
         return 1;
     }
 
-    TSK_MD5_Final(md5Hash, &md);
+    TSK_MD5_Final(&md, md5Hash);
     return 0;
 }
 
@@ -1384,7 +1398,7 @@ TSK_RETVAL_ENUM TskAutoDb::addUnallocFsSpaceToDb(size_t & numFs) {
 
                             }
                             else {
-                                if (curVsPartInfo.flags & TSK_POOL_VOLUME_FLAG_ENCRYPTED) {
+                                if (pool->vol_list->flags & TSK_POOL_VOLUME_FLAG_ENCRYPTED) {
                                     tsk_error_reset();
                                     tsk_error_set_errno(TSK_ERR_FS_ENCRYPTED);
                                     tsk_error_set_errstr(
